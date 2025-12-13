@@ -36,8 +36,8 @@ require 'fileutils'
   #####################################################################################
   # Adding DRC options
   #####################################################################################
-  unless File.exists?(__dir__ + "/drc_options.yml")
-    puts "drc_options.yml does not exists, creating it from defaults"
+  unless File.exist?(__dir__ + "/drc_options.yml")
+    puts "drc_options.yml does not exist, creating it from defaults"
     FileUtils.cp(__dir__ + "/drc_defaults.yml", __dir__ + "/drc_options.yml")
   end
   drc_initial_options = YAML.load(File.read(__dir__ + "/drc_options.yml"))
