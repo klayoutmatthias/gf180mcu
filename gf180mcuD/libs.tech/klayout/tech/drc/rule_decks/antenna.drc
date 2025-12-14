@@ -79,6 +79,7 @@ end
 logger.info("Number of threads to use #{$thr}")
 
 #=== PRINT DETAILS ===
+$verbose = $verbose || false
 logger.info("Verbose mode: #{$verbose}")
 if $verbose == 'true'
   verbose(true)
@@ -87,20 +88,17 @@ else
 end
 
 # === TILING MODE ===
-case $run_mode
-when 'tiling'
-  tiles(500.um)
-  tile_borders(10.um)
-  logger.info('Tiling  mode is enabled.')
+$run_mode = $run_mode || 'deep'
 
-when 'deep'
-  #=== HIER MODE ===
-  deep
-  logger.info('deep  mode is enabled.')
-else
+case $run_mode
+when 'flat'
   #=== FLAT MODE ===
   flat
-  logger.info('flat  mode is enabled.')
+  logger.info('flat mode is enabled.')
+else
+  #=== HIER MODE ===
+  deep
+  logger.info('deep mode is enabled.')
 end
 
 # METAL_TOP
