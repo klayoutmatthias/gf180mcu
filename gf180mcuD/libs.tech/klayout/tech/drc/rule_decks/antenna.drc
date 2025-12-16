@@ -400,7 +400,6 @@ ncomp      = comp.and(nplus).not(poly2)
 pcomp      = comp.and(pplus).not(poly2)
 
 ntap       = ncomp.and(nwell).not(res_mk)
-nwell_con  = nwell.not(res_mk)
 
 thin_gate  = tgate.not(dualgate)
 thick_gate = tgate.and(dualgate)
@@ -428,21 +427,21 @@ CHIP = extent.sized(0.0)
 logger.info('Starting GF180MCU ANTENNA DRC rules.')
 
 # ANTENNADIFFSIDEAREARATIO-like antenna check
-def antenna_check_gf180mcu(gate, antenna_layer, thickness, limit, n_diode, p_diode, mf)
-  expression = "var garea = area; var darea = area(n_diode) + area(p_diode); var per = perimeter(antenna_layer) * thickness; "\
+def antenna_check_gf180mcu(gate, antenna_layer, thickness, limit, n_diode, p_diode, nwell, mf)
+  expression = "var garea = area; var darea = area(n_diode) + area(p_diode) + area(nwell); var per = perimeter(antenna_layer) * thickness; "\
     "var ar = per / (garea + mf * darea); skip(ar < limit); "\
     "put('GATE_AREA', garea); put('DIODES_AREA', darea); put('ANT_PERIMETER', per); put('RATIO', ar);"
   variables = { "thickness" => thickness, "mf" => mf, "limit" => limit}
-  return evaluate_nets(gate, { "antenna_layer" => antenna_layer, "n_diode" => n_diode, "p_diode" => p_diode }, expression, variables)
+  return evaluate_nets(gate, { "antenna_layer" => antenna_layer, "n_diode" => n_diode, "p_diode" => p_diode, "nwell" => nwell }, expression, variables)
 end
 
 # ANTENNADIFFAREARATIO-like antenna check
-def antenna_check_gf180mcu_area(gate, antenna_layer, limit, n_diode, p_diode, mf)
-  expression = "var garea = area; var darea = area(n_diode) + area(p_diode); var aarea = area(antenna_layer); "\
+def antenna_check_gf180mcu_area(gate, antenna_layer, limit, n_diode, p_diode, nwell, mf)
+  expression = "var garea = area; var darea = area(n_diode) + area(p_diode) + area(nwell); var aarea = area(antenna_layer); "\
     "var ar = aarea / (garea + mf * darea); skip(ar < limit); "\
     "put('GATE_AREA', garea); put('DIODES_AREA', darea); put('ANT_AREA', aarea); put('RATIO', ar);"
   variables = { "mf" => mf, "limit" => limit}
-  return evaluate_nets(gate, { "antenna_layer" => antenna_layer, "n_diode" => n_diode, "p_diode" => p_diode }, expression, variables)
+  return evaluate_nets(gate, { "antenna_layer" => antenna_layer, "n_diode" => n_diode, "p_diode" => p_diode, "nwell" => nwell }, expression, variables)
 end
 
 #========================================
@@ -467,16 +466,15 @@ antenna_check(tgate, perimeter_only(poly2, 0.2.um), 200)
 logger.info('Construct connectivity for CONTACT')
 connect(poly2, contact)
 
-# N-diode - direct
-connect(n_diode, contact)
+# N-diode
+connect(contact, n_diode)
 
-# P-diode - direct
-connect(p_diode, contact)
+# P-diode
+connect(contact, p_diode)
 
-# P-diode - through nwell
-connect(ntap, contact)
-connect(nwell_con, ntap)
-connect(p_diode, nwell_con)
+# Nwell
+connect(contact, ntap)
+connect(ntap, nwell)
 
 # Rule ANT.8: Maximum ratio of contact area to related gate oxide area is 10.
 logger.info('Executing rule ANT.8')
@@ -496,7 +494,7 @@ connect(contact, metal1)
 ## area to related thin gate oxide area is 400.
 if thin_gate_count > 0
   logger.info('Executing rule ANT.16_i_ANT.2')
-  antenna_check_gf180mcu(thin_gate, metal1, 0.54, 400, n_diode, p_diode, 2)
+  antenna_check_gf180mcu(thin_gate, metal1, 0.54, 400, n_diode, p_diode, nwell,  2)
     .output('ANT.16_i_ANT.2',
             'ANT.16_i_ANT.2: Maximum ratio of Metal1 perimeter
                    area to related thin gate oxide area: 400')
@@ -507,7 +505,7 @@ end
 ## area to related thick gate oxide area is 400.
 if thick_gate_count > 0
   logger.info('Executing rule ANT.16_ii_ANT.2')
-  antenna_check_gf180mcu(thick_gate, metal1, 0.54, 400, n_diode, p_diode, 15)
+  antenna_check_gf180mcu(thick_gate, metal1, 0.54, 400, n_diode, p_diode, nwell,  15)
     .output('ANT.16_ii_ANT.2',
             'ANT.16_ii_ANT.2: Maximum ratio of Metal1 perimeter
                    area to related thick gate oxide area: 400')
@@ -525,7 +523,7 @@ if NO_VIA != 'true'
   # Rule ANT.16_i_ANT.9: Maximum ratio of Via1 area to related thin gate oxide area is 20.
   if thin_gate_count > 0
     logger.info('Executing rule ANT.16_i_ANT.9')
-    antenna_check_gf180mcu_area(thin_gate, via1, 20, n_diode, p_diode, 2)
+    antenna_check_gf180mcu_area(thin_gate, via1, 20, n_diode, p_diode, nwell,  2)
       .output('ANT.16_i_ANT.9',
               'ANT.16_i_ANT.9: Maximum ratio of Via1 area to related thin gate oxide area: 20')
   end
@@ -534,7 +532,7 @@ if NO_VIA != 'true'
   # Rule ANT.16_ii_ANT.9: Maximum ratio of Via1 area to related thick gate oxide area is 20.
   if thick_gate_count > 0
     logger.info('Executing rule ANT.16_ii_ANT.9')
-    antenna_check_gf180mcu_area(thick_gate, via1, 20, n_diode, p_diode, 15)
+    antenna_check_gf180mcu_area(thick_gate, via1, 20, n_diode, p_diode, nwell,  15)
       .output('ANT.16_ii_ANT.9',
               'ANT.16_ii_ANT.9: Maximum ratio of Via1 area to related thick gate oxide area: 20')
   end
@@ -551,7 +549,7 @@ connect(via1, metal2)
 # Rule ANT.16_i_ANT.3: Maximum ratio of Metal2 perimeter area to related gate oxide area is 400.
 if thin_gate_count > 0
   logger.info('Executing rule ANT.16_i_ANT.3')
-  antenna_check_gf180mcu(thin_gate, metal2, 0.54, 400, n_diode, p_diode, 2)
+  antenna_check_gf180mcu(thin_gate, metal2, 0.54, 400, n_diode, p_diode, nwell,  2)
     .output('ANT.16_i_ANT.3',
             'ANT.16_i_ANT.3: Maximum ratio of Metal2 perimeter area to related gate oxide area: 400')
 end
@@ -559,7 +557,7 @@ end
 # Rule ANT.16_i_ANT.3: Maximum ratio of Metal2 perimeter area to related gate oxide area is 400.
 if thick_gate_count > 0
   logger.info('Executing rule ANT.16_ii_ANT.3')
-  antenna_check_gf180mcu(thick_gate, metal2, 0.54, 400, n_diode, p_diode, 15)
+  antenna_check_gf180mcu(thick_gate, metal2, 0.54, 400, n_diode, p_diode, nwell,  15)
     .output('ANT.16_ii_ANT.3',
             'ANT.16_ii_ANT.3: Maximum ratio of Metal2 perimeter area to related gate oxide area: 400')
 end
@@ -577,7 +575,7 @@ if METAL_LEVEL == '3LM' || METAL_LEVEL == '4LM' || METAL_LEVEL == '5LM' || METAL
     # Rule ANT.16_i_ANT.10: Maximum ratio of Via2 area to related thin gate oxide area is 20.
     if thin_gate_count > 0
       logger.info('Executing rule ANT.16_i_ANT.10')
-      antenna_check_gf180mcu_area(thin_gate, via2, 20, n_diode, p_diode, 2)
+      antenna_check_gf180mcu_area(thin_gate, via2, 20, n_diode, p_diode, nwell,  2)
         .output('ANT.16_i_ANT.10',
                 'ANT.16_i_ANT.10: Maximum ratio of Via2 area to related thin gate oxide area: 20')
     end
@@ -586,7 +584,7 @@ if METAL_LEVEL == '3LM' || METAL_LEVEL == '4LM' || METAL_LEVEL == '5LM' || METAL
     # Rule ANT.16_ii_ANT.10: Maximum ratio of Via2 area to related thick gate oxide area is 20.
     if thick_gate_count > 0
       logger.info('Executing rule ANT.16_ii_ANT.10')
-      antenna_check_gf180mcu_area(thick_gate, via2, 20, n_diode, p_diode, 15)
+      antenna_check_gf180mcu_area(thick_gate, via2, 20, n_diode, p_diode, nwell,  15)
         .output('ANT.16_ii_ANT.10',
                 'ANT.16_ii_ANT.10: Maximum ratio of Via2 area to related thick gate oxide area: 20')
     end
@@ -602,7 +600,7 @@ if METAL_LEVEL == '3LM' || METAL_LEVEL == '4LM' || METAL_LEVEL == '5LM' || METAL
   # Rule ANT.16_i_ANT.4: Maximum ratio of Metal3 perimeter area to related thin gate oxide area is 400
   if thin_gate_count > 0
     logger.info('Executing rule ANT.16_i_ANT.4')
-    antenna_check_gf180mcu(thin_gate, metal3, 0.54, 400, n_diode, p_diode, 2)
+    antenna_check_gf180mcu(thin_gate, metal3, 0.54, 400, n_diode, p_diode, nwell,  2)
       .output('ANT.16_i_ANT.4',
               'ANT.16_i_ANT.4: Maximum ratio of Metal3 perimeter area to related thin gate oxide area: 400')
   end
@@ -610,7 +608,7 @@ if METAL_LEVEL == '3LM' || METAL_LEVEL == '4LM' || METAL_LEVEL == '5LM' || METAL
   # Rule ANT.16_i_ANT.4: Maximum ratio of Metal3 perimeter area to related thick gate oxide area is 400.
   if thick_gate_count > 0
     logger.info('Executing rule ANT.16_ii_ANT.4')
-    antenna_check_gf180mcu(thick_gate, metal3, 0.54, 400, n_diode, p_diode, 15)
+    antenna_check_gf180mcu(thick_gate, metal3, 0.54, 400, n_diode, p_diode, nwell,  15)
       .output('ANT.16_ii_ANT.4',
               'ANT.16_ii_ANT.4: Maximum ratio of Metal3 perimeter area to related thick gate oxide area: 400')
   end
@@ -627,7 +625,7 @@ if METAL_LEVEL == '3LM' || METAL_LEVEL == '4LM' || METAL_LEVEL == '5LM' || METAL
       # Rule ANT.16_iii_ANT.14_M3_MIMA: Maximum ratio of each of the metal3 layer perimeter
       ## area to related MIM area is 400
       logger.info('Executing rule ANT.16_iii_ANT.14_M3_MIMA')
-      antenna_check_gf180mcu(fusetop, metal3, 0.54, 400, n_diode, p_diode, 15)
+      antenna_check_gf180mcu(fusetop, metal3, 0.54, 400, n_diode, p_diode, nwell,  15)
         .output('ANT.16_iii_ANT.14_M3_MIMA',
                 'ANT.16_iii_ANT.14_M3_MIMA: Maximum ratio of each of the metal3
                        layer perimeter area to related MIM area is 400')
@@ -635,7 +633,7 @@ if METAL_LEVEL == '3LM' || METAL_LEVEL == '4LM' || METAL_LEVEL == '5LM' || METAL
       # Rule ANT.16_iii_ANT.15_V2_MIMA: Maximum ratio of each of Via2
       ## area to related MIM area is 20
       logger.info('Executing rule ANT.16_iii_ANT.15_V2_MIMA')
-      antenna_check_gf180mcu_area(fusetop, via2, 20, n_diode, p_diode, 15)
+      antenna_check_gf180mcu_area(fusetop, via2, 20, n_diode, p_diode, nwell,  15)
         .output('ANT.16_iii_ANT.15_V2_MIMA', 'ANT.16_iii_ANT.15_V2_MIMA: Maximum ratio
                        of each of Via2 area to related MIM area is 20')
     end
@@ -655,7 +653,7 @@ if METAL_LEVEL == '4LM' || METAL_LEVEL == '5LM' || METAL_LEVEL == '6LM'
     # Rule ANT.16_i_ANT.11: Maximum ratio of Via3 area to related thin gate oxide area is 20.
     if thin_gate_count > 0
       logger.info('Executing rule ANT.16_i_ANT.11')
-      antenna_check_gf180mcu_area(thin_gate, via3, 20, n_diode, p_diode, 2)
+      antenna_check_gf180mcu_area(thin_gate, via3, 20, n_diode, p_diode, nwell,  2)
         .output('ANT.16_i_ANT.11',
                 'ANT.16_i_ANT.11: Maximum ratio of Via3 area to related thin gate oxide area: 20')
     end
@@ -663,7 +661,7 @@ if METAL_LEVEL == '4LM' || METAL_LEVEL == '5LM' || METAL_LEVEL == '6LM'
     # Rule ANT.16_ii_ANT.11: Maximum ratio of Via3 area to related thick gate oxide area is 20.
     if thick_gate_count > 0
       logger.info('Executing rule ANT.16_ii_ANT.11')
-      antenna_check_gf180mcu_area(thick_gate, via3, 20, n_diode, p_diode, 15)
+      antenna_check_gf180mcu_area(thick_gate, via3, 20, n_diode, p_diode, nwell,  15)
         .output('ANT.16_ii_ANT.11',
                 'ANT.16_ii_ANT.11: Maximum ratio of Via3 area to related thick gate oxide area: 20')
     end
@@ -677,7 +675,7 @@ if METAL_LEVEL == '4LM' || METAL_LEVEL == '5LM' || METAL_LEVEL == '6LM'
     # Rule ANT.16_iii_ANT.15_V3_MIMA: Maximum ratio of each of Via2 area to related MIM area is 20.
     if fusetop_count > 0
       logger.info('Executing rule ANT.16_iii_ANT.15_V3_MIMA')
-      antenna_check_gf180mcu_area(fusetop, via3, 20, n_diode, p_diode, 15)
+      antenna_check_gf180mcu_area(fusetop, via3, 20, n_diode, p_diode, nwell,  15)
         .output('ANT.16_iii_ANT.15_V3_MIMA',
                 'ANT.16_iii_ANT.15_V3_MIMA: Maximum ratio of each of Via3 area to related MIM area: 20')
     end
@@ -694,7 +692,7 @@ if METAL_LEVEL == '4LM' || METAL_LEVEL == '5LM' || METAL_LEVEL == '6LM'
   # Rule ANT.16_i_ANT.5: Maximum ratio of Metal4 perimeter area to related thin gate oxide area is 400.
   if thin_gate_count > 0
     logger.info('Executing rule ANT.16_i_ANT.5')
-    antenna_check_gf180mcu(thin_gate, metal4, 0.54, 400, n_diode, p_diode, 2)
+    antenna_check_gf180mcu(thin_gate, metal4, 0.54, 400, n_diode, p_diode, nwell,  2)
       .output('ANT.16_i_ANT.5',
               'ANT.16_i_ANT.5: Maximum ratio of Metal4 perimeter area to related gate oxide area: 400')
   end
@@ -702,7 +700,7 @@ if METAL_LEVEL == '4LM' || METAL_LEVEL == '5LM' || METAL_LEVEL == '6LM'
   # Rule ANT.16_i_ANT.5: Maximum ratio of Metal4 perimeter area to related thick gate oxide area is 400.
   if thick_gate_count > 0
     logger.info('Executing rule ANT.16_ii_ANT.5')
-    antenna_check_gf180mcu(thick_gate, metal4, 0.54, 400, n_diode, p_diode, 15)
+    antenna_check_gf180mcu(thick_gate, metal4, 0.54, 400, n_diode, p_diode, nwell,  15)
       .output('ANT.16_ii_ANT.5',
               'ANT.16_ii_ANT.5: Maximum ratio of Metal4 perimeter area to related gate oxide area: 400')
   end
@@ -716,7 +714,7 @@ if METAL_LEVEL == '4LM' || METAL_LEVEL == '5LM' || METAL_LEVEL == '6LM'
     ## area to related MIM area is 400
     if fusetop_count > 0
       logger.info('Executing rule ANT.16_iii_ANT.15_V3_MIMA')
-      antenna_check_gf180mcu(fusetop, metal4, 0.54, 400, n_diode, p_diode, 15)
+      antenna_check_gf180mcu(fusetop, metal4, 0.54, 400, n_diode, p_diode, nwell,  15)
         .output('ANT.16_iii_ANT.14_M4_MIMA',
                 'ANT.16_iii_ANT.14_M4_MIMA: Maximum ratio of each of the metal4 layer perimeter
                  area to related MIM area is 400')
@@ -737,7 +735,7 @@ if METAL_LEVEL == '5LM' || METAL_LEVEL == '6LM'
     # Rule ANT.16_i_ANT.12:  Maximum ratio of Via4 area to related thin gate oxide area is 20.
     if thin_gate_count > 0
       logger.info('Executing rule ANT.16_i_ANT.12')
-      antenna_check_gf180mcu_area(thin_gate, via4, 20, n_diode, p_diode, 2)
+      antenna_check_gf180mcu_area(thin_gate, via4, 20, n_diode, p_diode, nwell,  2)
         .output('ANT.16_i_ANT.12',
                 'ANT.16_i_ANT.12: Maximum ratio of Via4 area to related thin gate oxide area: 20')
     end
@@ -745,7 +743,7 @@ if METAL_LEVEL == '5LM' || METAL_LEVEL == '6LM'
     # Rule ANT.16_ii_ANT.12: Maximum ratio of Via4 area to related thick gate oxide area is 20.
     if thick_gate_count > 0
       logger.info('Executing rule ANT.16_ii_ANT.12')
-      antenna_check_gf180mcu_area(thick_gate, via4, 20, n_diode, p_diode, 15)
+      antenna_check_gf180mcu_area(thick_gate, via4, 20, n_diode, p_diode, nwell,  15)
         .output('ANT.16_ii_ANT.12',
                 'ANT.16_ii_ANT.12: Maximum ratio of Via4 area to related thick gate oxide area: 20')
     end
@@ -759,7 +757,7 @@ if METAL_LEVEL == '5LM' || METAL_LEVEL == '6LM'
     # Rule ANT.16_iii_ANT.15_V4_MIMA: Maximum ratio of each of Via2 area to related MIM area is 20
     if fusetop_count > 0
       logger.info('Executing rule ANT.16_iii_ANT.15_V4_MIMA')
-      antenna_check_gf180mcu_area(fusetop, via4, 20, n_diode, p_diode, 15)
+      antenna_check_gf180mcu_area(fusetop, via4, 20, n_diode, p_diode, nwell,  15)
         .output('ANT.16_iii_ANT.15_V4_MIMA',
                 'ANT.16_iii_ANT.15_V4_MIMA: Maximum ratio of each of Via4 area to related MIM area is 20')
     end
@@ -778,7 +776,7 @@ if METAL_LEVEL == '5LM' || METAL_LEVEL == '6LM'
     # Rule ANT.16_i_ANT.6: Maximum ratio of Metal5 perimeter area to related thin gate oxide area is 400.
     if thin_gate_count > 0
       logger.info('Executing rule ANT.16_i_ANT.6')
-      antenna_check_gf180mcu(thin_gate, metal5, 0.54, 400, n_diode, p_diode, 2)
+      antenna_check_gf180mcu(thin_gate, metal5, 0.54, 400, n_diode, p_diode, nwell,  2)
         .output('ANT.16_i_ANT.6',
                 'ANT.16_i_ANT.6: Maximum ratio of Metal5 perimeter area to related thin gate oxide area: 400')
     end
@@ -787,7 +785,7 @@ if METAL_LEVEL == '5LM' || METAL_LEVEL == '6LM'
     # Rule ANT.16_i_ANT.6: Maximum ratio of Metal5 perimeter area to related thick gate oxide area is 400.
     if thick_gate_count > 0
       logger.info('Executing rule ANT.16_ii_ANT.6')
-      antenna_check_gf180mcu(thick_gate, metal5, 0.54, 400, n_diode, p_diode, 15)
+      antenna_check_gf180mcu(thick_gate, metal5, 0.54, 400, n_diode, p_diode, nwell,  15)
         .output('ANT.16_ii_ANT.6',
                 'ANT.16_ii_ANT.6: Maximum ratio of Metal5 perimeter area to related thick gate oxide area 400')
     end
@@ -801,7 +799,7 @@ if METAL_LEVEL == '5LM' || METAL_LEVEL == '6LM'
       ## area to related MIM area is 400
       if fusetop_count > 0
         logger.info('Executing rule ANT.16_iii_ANT.14_M5_MIMA')
-        antenna_check_gf180mcu(fusetop, metal5, 0.54, 400, n_diode, p_diode, 15)
+        antenna_check_gf180mcu(fusetop, metal5, 0.54, 400, n_diode, p_diode, nwell,  15)
           .output('ANT.16_iii_ANT.14_M5_MIMA',
                   'ANT.16_iii_ANT.14_M5_MIMA: Maximum ratio of each of the metal5 layer perimeter
                    area to related MIM area is 400')
@@ -820,7 +818,7 @@ if METAL_LEVEL == '5LM' || METAL_LEVEL == '6LM'
       # Rule ANT.16_i_ANT.13: Maximum ratio of Via5 area to related thin gate oxide area is 20.
       if thin_gate_count > 0
         logger.info('Executing rule ANT.16_i_ANT.13')
-        antenna_check_gf180mcu_area(thin_gate, via5, 20, n_diode, p_diode, 2)
+        antenna_check_gf180mcu_area(thin_gate, via5, 20, n_diode, p_diode, nwell,  2)
           .output('ANT.16_i_ANT.13',
                   'ANT.16_i_ANT.13: Maximum ratio of Via5 area to related thin gate oxide area: 20')
       end
@@ -828,7 +826,7 @@ if METAL_LEVEL == '5LM' || METAL_LEVEL == '6LM'
       # Rule ANT.16_ii_ANT.13: Maximum ratio of Via5 area to related thick gate oxide area is 20.
       if thick_gate_count > 0
         logger.info('Executing rule ANT.16_ii_ANT.13')
-        antenna_check_gf180mcu_area(thick_gate, via5, 20, n_diode, p_diode, 15)
+        antenna_check_gf180mcu_area(thick_gate, via5, 20, n_diode, p_diode, nwell,  15)
           .output('ANT.16_ii_ANT.13',
                   'ANT.16_ii_ANT.13: Maximum ratio of Via5 area to related thick gate oxide area: 20')
       end
@@ -842,7 +840,7 @@ if METAL_LEVEL == '5LM' || METAL_LEVEL == '6LM'
       # Rule ANT.16_iii_ANT.15_V5_MIMA: Maximum ratio of each of Via2 area to related MIM area is 20.
       if fusetop_count > 0
         logger.info('Executing rule ANT.16_iii_ANT.15_V5_MIMA')
-        antenna_check_gf180mcu_area(fusetop, via5, 20, n_diode, p_diode, 15)
+        antenna_check_gf180mcu_area(fusetop, via5, 20, n_diode, p_diode, nwell,  15)
           .output('ANT.16_iii_ANT.15_V5_MIMA',
                   'ANT.16_iii_ANT.15_V5_MIMA: Maximum ratio of each of Via5 area to related MIM area: 20')
       end
@@ -860,7 +858,7 @@ if METAL_LEVEL == '5LM' || METAL_LEVEL == '6LM'
   # Rule ANT.16_i_ANT.7: Maximum ratio of Metaltop perimeter area to related thin gate oxide area is 400.
   if thin_gate_count > 0
     logger.info('Executing rule ANT.16_i_ANT.7')
-    antenna_check_gf180mcu(thin_gate, top_metal, met_top_thick, 400, n_diode, p_diode, 2)
+    antenna_check_gf180mcu(thin_gate, top_metal, met_top_thick, 400, n_diode, p_diode, nwell,  2)
       .output('ANT.16_i_ANT.7',
               'ANT.16_i_ANT.7: Maximum ratio of Metaltop perimeter area to related thin gate oxide area: 400')
   end
@@ -868,7 +866,7 @@ if METAL_LEVEL == '5LM' || METAL_LEVEL == '6LM'
   # Rule ANT.16_ii_ANT.7: Maximum ratio of Metaltop perimeter area to related thick gate oxide area is 400.
   if thick_gate_count > 0
     logger.info('Executing rule ANT.16_ii_ANT.7')
-    antenna_check_gf180mcu(thick_gate, top_metal, met_top_thick, 400, n_diode, p_diode, 15)
+    antenna_check_gf180mcu(thick_gate, top_metal, met_top_thick, 400, n_diode, p_diode, nwell,  15)
       .output('ANT.16_ii_ANT.7',
               'ANT.16_ii_ANT.7: Maximum ratio of Metaltop perimeter area to related thick gate oxide area: 400')
   end
@@ -882,7 +880,7 @@ if METAL_LEVEL == '5LM' || METAL_LEVEL == '6LM'
     ## area to related MIM area is 400
     if fusetop_count > 0
       logger.info('Executing rule ANT.16_iii_ANT.14_MT_MIMA')
-      antenna_check_gf180mcu(fusetop, metaltop, met_top_thick, 400, n_diode, p_diode, 15)
+      antenna_check_gf180mcu(fusetop, metaltop, met_top_thick, 400, n_diode, p_diode, nwell,  15)
         .output('ANT.16_iii_ANT.14_MT_MIMA',
                 'ANT.16_iii_ANT.14_MT_MIMA: Maximum ratio of each of the Metaltop layer perimeter
                        area to related MIM area is 400')
@@ -900,7 +898,7 @@ if MIM_OPTION == 'B'
   ## area to related MIM area is 400
   if fusetop_count > 0
     logger.info('Executing rule ANT.16_iii_ANT.14_MT_MIMB')
-    antenna_check_gf180mcu(fusetop, top_metal, met_top_thick, 400, n_diode, p_diode, 15)
+    antenna_check_gf180mcu(fusetop, top_metal, met_top_thick, 400, n_diode, p_diode, nwell,  15)
       .output('ANT.16_iii_ANT.14_MT_MIMB',
               'ANT.16_iii_ANT.14_MT_MIMB: Maximum ratio of each of the Top metal layer perimeter
                       area to related MIM area is 400')
