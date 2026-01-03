@@ -40,7 +40,7 @@ top_cell.insert(RBA::CellInstArray::new(slots_top, RBA::Trans::new))
 
 output_cell(slots_top.name)
 
-slots_dict = [
+slots_hash = [
   {layer: 34, metal_datatype: 0, slot_datatype: 3, name: "Metal1_Slot", via_below_layer: 33, via_above_layer: 35},
   {layer: 36, metal_datatype: 0, slot_datatype: 3, name: "Metal2_Slot", via_below_layer: 35, via_above_layer: 38},
   {layer: 42, metal_datatype: 0, slot_datatype: 3, name: "Metal3_Slot", via_below_layer: 38, via_above_layer: 40},
@@ -48,7 +48,7 @@ slots_dict = [
   {layer: 81, metal_datatype: 0, slot_datatype: 3, name: "Metal5_Slot", via_below_layer: 41, via_above_layer: nil}
 ]
 
-slots_dict.each do |slots|
+slots_hash.each do |slots|
   puts "slots: #{slots[:layer]}/#{slots[:slot_datatype]} #{slots[:name]}"
   
   metal_layer = input(slots[:layer], slots[:metal_datatype])
