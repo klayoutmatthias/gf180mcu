@@ -4,13 +4,11 @@ set current_folder [file dirname [file normalize [info script]]]
 set ::env(PAD_SITE_NAME) "GF_IO_Site"
 set ::env(PAD_CORNER_SITE_NAME) "GF_COR_Site"
 
-# Pad fake IO sites information
-# (Set when the pad LEF does not
-# contain the site definition)
-set ::env(PAD_FAKE_SITE_HEIGHT) "350"
-set ::env(PAD_FAKE_SITE_WIDTH) "0.1"
-set ::env(PAD_FAKE_CORNER_SITE_HEIGHT) "355"
-set ::env(PAD_FAKE_CORNER_SITE_WIDTH) "355"
+# Create fake pad sites
+# Note: This is needed if site definition are not in LEF
+set ::env(PAD_FAKE_SITES) [dict create]
+dict set ::env(PAD_FAKE_SITES) "GF_IO_Site" "0.1, 355"
+dict set ::env(PAD_FAKE_SITES) "GF_COR_Site" "355, 355"
 
 # Pad cells
 set ::env(PAD_CORNER) "$::env(PAD_CELL_LIBRARY)__cor"
