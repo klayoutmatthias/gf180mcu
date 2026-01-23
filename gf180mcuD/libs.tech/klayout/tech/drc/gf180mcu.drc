@@ -480,6 +480,9 @@ logger.info('Running all DUMMY rules') if DUMMY
 # %include rule_decks/via4_split.drc
 # %include rule_decks/via5.drc
 # %include rule_decks/ymtp_mk.drc
+# %include rule_decks/guard_ring.drc
+# %include rule_decks/cup.drc
+# %include rule_decks/mslot.drc
 
 # Always enabled
 # %include rule_decks/dummy_exclude.drc
@@ -491,10 +494,6 @@ logger.info('Running all DUMMY rules') if DUMMY
 # %include rule_decks/dummy_metal3.drc
 # %include rule_decks/dummy_metal4.drc
 # %include rule_decks/dummy_metal5.drc
-
-# %include rule_decks/guard_ring.drc
-
-# %include rule_decks/cup.drc
 
 #================================================
 #-------------------- Tail ----------------------
