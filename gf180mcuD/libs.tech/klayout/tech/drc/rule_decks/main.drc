@@ -132,8 +132,9 @@ logger.info("Number of threads to use #{$thr}")
 #=== PRINT DETAILS ===
 
 verbose(bool_check?($verbose))
+bool_check?($verbose) && profile(200)
 
-logger.info("Verbose mode: #{$verbose}")
+logger.info("Verbose/profiling mode: #{$verbose}")
 
 # === TILING MODE ===
 case $run_mode
@@ -200,6 +201,8 @@ all_nwell       = dnwell_n.join(nwell)
 
 ncomp           = comp.and(nplus)
 pcomp           = comp.and(pplus)
+ncomp_not_poly  = ncomp.not(poly2)
+pcomp_not_poly  = pcomp.not(poly2)
 tgate           = poly2.and(comp).not(res_mk)
 
 nactive         = ncomp.not(all_nwell)
@@ -222,6 +225,7 @@ psd_dn          = pcomp.and(dnwell_n).interacting(pgate_dn).not(pgate_dn).not(re
 nsd_dn          = ncomp.and(dnwell_p).interacting(ngate_dn).not(ngate_dn).not(res_mk)
 
 natcomp        	= nat.and(comp)
+natcomp_not_poly	= natcomp.not(poly2)
 
 # Gate
 nom_gate = tgate.not(dualgate)
@@ -258,17 +262,17 @@ nwell_n_dn = nwell.not_interacting(dnwell)
 if CONNECTIVITY_RULES
   logger.info('Construct connectivity for the design.')
 
-  connect(dnwell, ncomp)
-  connect(lvpwell_out, pcomp)
-  connect(lvpwell_dn, pcomp)
-  connect(nwell, ncomp)
-  connect(mvsd, ncomp)
-  connect(mvpsd, pcomp)
+  connect(dnwell, ncomp_not_poly)
+  connect(lvpwell_out, pcomp_not_poly)
+  connect(lvpwell_dn, pcomp_not_poly)
+  connect(nwell, ncomp_not_poly)
+  connect(mvsd, ncomp_not_poly)
+  connect(mvpsd, pcomp_not_poly)
 
   if contact_tables.include?(TABLE_NAME)
-    connect(ncomp,  contact)
-    connect(pcomp,  contact)
-    connect(natcomp, contact)
+    connect(ncomp_not_poly,  contact)
+    connect(pcomp_not_poly,  contact)
+    connect(natcomp_not_poly, contact)
     connect(contact, metal1)
   end
 
